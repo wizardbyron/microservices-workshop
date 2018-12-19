@@ -81,3 +81,52 @@ It will response a JSON like:
 Now, You are finish the first mile stone, Congrats!
 
 Let's take the next step by `git checkout step-2`
+
+## Step 2: Hey, there is a Bug！
+
+Let's back to the code, open `gs-accessing-data-mysql/complete/src/main/java/hello/MainController.java` in your IDE or editor. You can find out the code which handle `add` operation in line 20.
+
+Here is a problem, what will happend if we add a new user with same user and email?
+
+You can make same add request twice then you can get two users with same name and email like this:
+
+```JSON
+[
+    {
+        "id": 1,
+        "name": "test_user",
+        "email": "test_user@google.com"
+    },
+    {
+        "id": 2,
+        "name": "test_user",
+        "email": "test_user@google.com"
+    }
+]
+```
+
+The only difference is the ID. The user can have different name but same email, or an email address with different account name, or there a unique user-email pair in the database. No matter what kind of constraint you want, You have to add it.
+
+The constraint in the data model which generated from the user class. Spring boot will create a table for us when we write `spring.jpa.hibernate.ddl-auto=create` in file `application.properties`.
+
+We can add the constraint via annotaion, You can add following line between `@Entity` and `public class User {` to assure user-email pair unique in database.
+
+```Java
+@Table(name = "USER", uniqueConstraints = @UniqueConstraint(columnNames = {"Name", "Email"}))
+```
+
+Let's rerun the application and make same request twice. It should return an unfriendly message like this:
+
+```JSON
+{
+    "timestamp": "2018-12-19T14:15:16.304+0000",
+    "status": 500,
+    "error": "Internal Server Error",
+    "message": "could not execute statement; SQL [n/a]; constraint [UKrjpkssy3ogf0vjvjbn7le85qt]; nested exception is org.hibernate.exception.ConstraintViolationException: could not execute statement",
+    "path": "/demo/add"
+}
+```
+
+Anyway we fixed a bug! Let's see how to keep this bug away.
+
+Let's take the next step by `git checkout step-3`
