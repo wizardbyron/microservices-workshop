@@ -130,3 +130,82 @@ Let's rerun the application and make same request twice. It should return an unf
 Anyway we fixed a bug! Let's see how to keep this bug away.
 
 Let's take the next step by `git checkout step-3`
+
+## Step 3: Add automated integration test to keep known bug away!
+
+There is a side affect you may found: when you update the user class(the data model). The Spring will recreated the database when API is launching.
+
+The good thing is you fix a bug. It doesn't matter you loss some valueless test data. We will handle this in later steps.
+
+Now we need to add some automation tests to record this situation and keep this bug away.
+
+There is another good spring guide project named [Spring Boot Actuator](https://spring.io/guides/gs/actuator-service/). Spring Boot Actuator is a sub-project of Spring Boot. It adds several production grade services to your application with little effort on your part. Actually, I don't know what are they added to make it to `production grade`. Whatever, `production grade` to me is `the project worth to learn.`
+
+OK, Let's clone the repo by `git clone https://github.com/spring-guides/gs-actuator-service.git` and open the `complete` folder it in your IDE.
+
+It's another RESTful API example and simpler than we updated above. It just response a stupid "greeting" message. (Why do you need a greeting API? I'd like to have an "I'm fine." API instead.)
+
+The important thing is the automation integration test in `gs-actuator-service/complete/src/test/java/hello/HelloWorldApplicationTests.java`.
+
+You can run the test in your IDE or enter `./gradle test` in your shell. It will launch the Spring Boot and made reqeust via `testRestTemplate.getForEntity` method to simulate user requests.
+
+We can copy the whole file and rename it from `HelloWorldApplicationTests.java` to `ApplicationTests.java` and update the request path to `demo/all`.
+
+Let's run the test.
+
+Opps! You may get the error like:
+
+```Java
+org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'hello.ApplicationTests': Injection of autowired dependencies failed; nested exception is java.lang.IllegalArgumentException: Could not resolve placeholder 'local.management.port' in value "${local.management.port}"
+```
+
+Ah! There must something we missed from actuator project. Comparing these two projects. There is one line missing in `build.gradle` file:
+
+```Groovy
+compile("org.springframework.boot:spring-boot-starter-actuator")
+```
+
+Add this line to the build.gradle file in `gs-mysql-data` and rerun.
+
+Damn it! Another error:
+
+```Java
+org.springframework.web.client.RestClientException: Error while extracting response for type [interface java.util.Map] and content type [application/json;charset=UTF-8]; nested exception is org.springframework.http.converter.HttpMessageNotReadableException: JSON parse error: Cannot deserialize instance of `java.util.LinkedHashMap` out of START_ARRAY token; nested exception is com.fasterxml.jackson.databind.exc.MismatchedInputException: Cannot deserialize instance of `java.util.LinkedHashMap` out of START_ARRAY token
+ at [Source: (PushbackInputStream); line: 1, column: 1]
+```
+
+There is an exception to convert response to Map.class. Let's make it simple: change Map.class to String.class. The method will like this:
+
+```Java
+@Test
+public void shouldReturn200WhenSendingRequestToController() throws Exception {
+    @SuppressWarnings("rawtypes")
+    ResponseEntity<String> entity = this.testRestTemplate.getForEntity(
+            "http://localhost:" + this.port + "/demo/all", String.class);
+
+    then(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+}
+```
+
+Let's rerun the test again.
+
+Yeah! All tests passed!. Let's write the test code again:
+
+```Java
+@Test
+public void shouldReturn500WhenSendingSameRequestToController() throws Exception {
+    this.testRestTemplate.getForEntity(
+            "http://localhost:" + this.port + "/demo/add??name=test_user&email=test_user@google.com", String.class);
+    ResponseEntity<String> entity = this.testRestTemplate.getForEntity(
+            "http://localhost:" + this.port + "/demo/add??name=test_user&email=test_user@google.com", String.class);
+    then(entity.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+}
+```
+
+Let's run the test, all passed! Awesome!
+
+Wait, How about the existing data in database ? The test suite will recreate database everytime to keep it clean for your test.
+
+All good, Let's create other CRUD APIs in next step.
+
+Let's take the next step by `git checkout step-4`
